@@ -1,0 +1,187 @@
+= Chapter 2: Packaging Application using Docker
+
+== 2.1 Docker Workflow
+
+**Slides**
+
+. Explain the Docker workflow of CLI, Engine and Registry
+
+== 2.2 Docker Image and Container
+
+**Slides**
+
+. Concepts to be explained:
+.. Dockerfile
+... FROM, ADD, CMD
++
+```
+FROM debian
+
+CMD echo "hello world!"
+```
++
+Another Dockerfile:
++
+```
+FROM openjdk
+
+CMD java -version
+```
++
+... Amazon Corretto
+... Multi-stage Dockerfile
+.. Build context
+.. Image tagging
+.. Run a container
+.. Port forward
+
+== 2.3 Build Docker Image using Dockerfile
+
+**Code**
+
+. Change to `app` directory
+. Show and explain multi-stage Dockerfile
+. Create local repo:
+
+	mvn -Dmaven.repo.local=./repository clean package
+	tar cf repository.tar.gz ./repository
+
+. Create Docker image:
+
+	docker image build -t arungupta/greeting .
+
+. Show Docker image:
+
+    docker image ls
+
+== 2.4 Run Docker Container
+
+. Run container and show logs:
+
+    docker container run -p 8080:8080 arungupta/greeting
+
+. Access application:
+
+	curl http://localhost:8080/hello
+
+. Show list of containers:
+
+    docker container ls
+
+. Terminate container:
+
+	docker container stop <name>
+	docker container rm <name>
+
+. Alternatively, start the container:
+
+	docker container run -p 8080:8080 --name greeting -d arungupta/greeting
+
+. Show logs:
+
+    docker container logs greeting
+
+. Access  application:
+
+	curl http://localhost:8080/hello
+
+. Remove container:
+
+	docker container rm -f greeting
++
+Explain forced termination.
+
+== 2.5 Build Docker Image using Jib
+
+**Slides**
+
+The benefits of using Jib over a multi-stage Dockerfile build include:
+
+. Fast because it leverages Docker image layer caching
+. No need for Docker daemon
+. No need to write a Dockerfile or build the archive of m2 dependencies
+. Maven and Gradle plugin
+
+**Code**
+
+. Explain Jib maven profile
+. Create Docker image to Docker daemon:
+
+    mvn package -Pjib
++
+Alternatively, Jib can also build without Docker daemon, and directly to a registry:
++
+    mvn jib:build -Pjib
++
+. Show image history:
+
+	docker image history arungupta/greeting
+
+== 2.6 Minimal Docker Image using Custom JRE
+
+**Prereq**
+
+. Create an Ubuntu EC2 instance
+. Login:
+
+	ssh -i ~/.ssh/arun-us-east1.pem ubuntu@ec2-3-84-85-248.compute-1.amazonaws.com
+
+. Install default JDK:
+
+	sudo apt-get update
+	sudo apt-get install -y default-jdk
+
+. Clone the repo:
+
+	git clone https://github.com/arun-gupta/lil-kubernetes-for-java
+
+. Build the application:
+
+	cd lil-kubernetes-for-java/app
+	sudo apt install -y maven
+	mvn package
+
+. Install Docker:
+
+	sudo apt install -y docker.io
+
+. Build the Docker image:
+
+	mvn -Dmaven.repo.local=./repository clean package
+	tar cf repository.tar.gz ./repository
+	sudo docker image build -t arungupta/greeting .
+
+**Code**
+
+We noticed that our Docker image was 489MB. Even though we used OpenJDK:8-JRE as the base image, but it still contains a lot of JDK functionality that is not needed by our application. JDK 9 introduced module systems that allows you to selectively include the functionality needed for your application, and leave everything else behind. We'll look at how the Docker image size for our Java application can be reduced using the tools provided by JDK 9 onwards.
+
+jlink is a tool available in JDK 9 onwards, and allows to assemble and optimize a set of modules and their dependencies into a custom runtime image.
+
+. Create a custom JRE for the Spring Boot application:
+
+	cp target/greeting.war target/greeting.jar
+	jlink \
+		--output myjre \
+		--add-modules $(jdeps --print-module-deps target/greeting.jar),\
+		java.xml,jdk.unsupported,java.sql,java.naming,java.desktop,\
+		java.management,java.security.jgss,java.instrument
+
+. Build Docker image using this custom JRE:
+
+	sudo docker image build -f Dockerfile.jre -t arungupta/greeting:jre-slim .
+
+. List Docker images and show the difference in sizes:
+
+	ubuntu@ip-172-31-35-132:~$ sudo docker image ls
+	REPOSITORY           TAG                 IMAGE ID            CREATED             SIZE
+	arungupta/greeting   jre-slim            4334d1ebec46        2 minutes ago       160MB
+	arungupta/greeting   latest              079dd8de2731        5 minutes ago       489MB
+
+. Run the container:
+
+	sudo docker container run -d -p 8080:8080 arungupta/greeting:jre-slim
+
+. Access the application:
+
+	curl http://localhost:8080/hello
+

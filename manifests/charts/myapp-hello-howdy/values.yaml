@@ -1,0 +1,15 @@
+greeting:
+  image: arungupta/greeting
+  replicaCount: 1
+
+image:
+  helloTag: hello
+  howdyTag: howdy
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+  externalPort: 80
+  internalPort: 8080
+  externalDebugPort: 5005
+  internalDebugPort: 5005

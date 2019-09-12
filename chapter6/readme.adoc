@@ -1,0 +1,90 @@
+
+== Chapter 6: Deployment Pipelines
+
+=== 6.1 Skaffold
+
+**Slides**
+
+. What is deployment pipeline?
+. What is Skaffold?
+.. Key benefits
+.. Workflow
+
+**Code**
+
+https://github.com/GoogleContainerTools/skaffold[Skaffold] is a command line utility that facilitates continuous development for Kubernetes applications. With Skaffold, you can iterate on your application source code locally then deploy it to a remote Kubernetes cluster.
+
+. Check context:
+
+	kubectl config get-contexts
+	CURRENT   NAME                                  CLUSTER                          AUTHINFO                              NAMESPACE
+	*         arun@k8s-course.us-west-2.eksctl.io   k8s-course.us-west-2.eksctl.io   arun@k8s-course.us-west-2.eksctl.io   
+	          docker-for-desktop                    docker-for-desktop-cluster       docker-for-desktop                    
+	          minikube                              minikube                         minikube 
+
+. Change to local Kubernetes cluster:
+
+	kubectl config use-context docker-for-desktop
+
+. Check if service is running:
+
+	kubectl get svc,deployment,pod
+
+. Check Helm applications:
+
+	helm ls
+
+. Delete Helm chart:
+
+	helm delete myapp --purge
+
+. Download Skaffold:
+
+	brew install skaffold
+
+. Copy `manifests/standalone/greeting.yaml` to `app` directory
+. Change to `app` directory
+. Show `skaffold.yaml`
+. Open http://localhost:8080/hello in browser. This will show that the page is not available.
+. Run Skaffold in the application directory:
+
+    skaffold dev
+
+. Refresh the page in browser to see the output.
+
+Same Java application, now continuously built through Skaffold and deployed to a local Kubernetes cluster. This can also be integrated with Jib. This can also be deployed to a remote Kubernetes cluster.
+
+=== 6.2 AWS CodePipeline
+
+**Slides**
+
+. Code Pipeline + Code Commit
+.. Key benefits
+.. Workflow
+
+**Code**
+
+. Set up context:
+
+	kubectl config set-context arun@k8s-course.us-west-2.eksctl.io
+
+. Show and explain `buildspec.yaml`
+. Show https://eksworkshop.com/codepipeline/
+. Create IAM role
+. Modify aws-auth ConfigMap
+. Talk about GitHub access token
+. Create CodePipeline
+.. Change the region to `us-west-2`
+.. Specify GitHub user name and token
+.. Change the repo
+.. Change EKS cluster name
+.. Show CloudFormation
+. https://console.aws.amazon.com/codesuite/codepipeline/pipelines[Show CodePipline]
+. Tail logs
+. Use the following command to access the service:
+
+    curl http://$(kubectl get svc/greeting \
+      -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'):8080/hello
+
+Same Java application, now continuously built through AWS CodePipeline and deployed to an Amazon EKS cluster.
+
